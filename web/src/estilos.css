@@ -85,6 +85,41 @@ header h1 span {
   font-size: 0.98rem;
 }
 
+/* El nombre de quien arma el altar. Antes vivia dentro del formulario de
+   agregar elementos, que estaba mal: tu nombre no es una propiedad de una
+   vela. Va aqui y se pregunta una vez. */
+.encabezado-sub label {
+  display: inline;
+  margin: 0;
+  font-size: inherit;
+  color: inherit;
+}
+
+.encabezado-nombre {
+  width: auto;
+  max-width: 11rem;
+  margin-left: 0.4rem;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--amarillo);
+  background: transparent;
+  border: none;
+  border-bottom: 2px dashed var(--borde);
+  border-radius: 0;
+  text-align: center;
+}
+
+.encabezado-nombre::placeholder {
+  color: #8a76a3;
+  font-weight: 400;
+}
+
+.encabezado-nombre:focus {
+  outline: none;
+  border-bottom-color: var(--naranja);
+}
+
 #modo {
   margin: 1.2rem auto 0;
   max-width: 46rem;
@@ -259,6 +294,16 @@ main {
   place-items: center;
 }
 
+/* El SVG viene envuelto en .elemento-arte porque React necesita un nodo
+   propio para inyectar nuestro HTML. El envoltorio no debe cambiar el
+   tamaño del dibujo. */
+.elemento-arte {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+
 .elemento-figura svg,
 .elemento-figura img {
   width: 100%;
@@ -377,8 +422,14 @@ label > span {
   margin-bottom: 0.3rem;
 }
 
-input,
-select {
+label > small {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.72rem;
+  color: #8a76a3;
+}
+
+input {
   width: 100%;
   padding: 0.6rem 0.7rem;
   font: inherit;
@@ -389,8 +440,7 @@ select {
   border-radius: 10px;
 }
 
-input:focus,
-select:focus {
+input:focus {
   outline: none;
   border-color: var(--naranja);
 }
@@ -400,7 +450,178 @@ input[type='file'] {
   font-size: 0.8rem;
 }
 
-button#agregar {
+/* --- La galeria ------------------------------------------------------ */
+
+/* Reemplaza los tres <select> que tenia la version anterior. Cada cosa se
+   ve dibujada, se pica, y cae en su grada. */
+
+.galeria-grupo {
+  margin-bottom: 1.3rem;
+}
+
+.galeria-grupo-titulo {
+  margin: 0 0 0.55rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--naranja-claro);
+}
+
+.galeria-grupo-titulo span {
+  display: block;
+  margin-top: 0.15rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 0.74rem;
+  color: #8a76a3;
+}
+
+.galeria-rejilla {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+  gap: 0.5rem;
+}
+
+.opcion {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.5rem 0.25rem 0.4rem;
+  font: inherit;
+  color: var(--crema);
+  background: var(--morado-claro);
+  border: 2px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease;
+}
+
+.opcion:hover:not(:disabled),
+.opcion:focus-visible {
+  transform: translateY(-3px);
+  border-color: var(--naranja);
+  outline: none;
+}
+
+.opcion:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.opcion-arte {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: grid;
+  place-items: center;
+}
+
+.opcion-arte svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.opcion-nombre {
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.opcion-nivel {
+  font-size: 0.62rem;
+  color: #8a76a3;
+}
+
+/* --- El panel -------------------------------------------------------- */
+
+/* Aparece solo cuando lo que elegiste pide un dato, y trae SOLO los campos
+   que ese tipo declara. Por eso ya no puede pedirte una foto para la sal. */
+
+.panel-encabezado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.panel-encabezado h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--naranja-claro);
+}
+
+.panel-cerrar {
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 50%;
+  border: 2px solid var(--borde);
+  background: var(--morado);
+  color: var(--crema-apagada);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.panel-cerrar:hover {
+  background: var(--rosa);
+  border-color: var(--rosa);
+  color: #fff;
+}
+
+.panel-niveles {
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.7rem 0.7rem;
+  border: 2px solid var(--borde);
+  border-radius: 10px;
+}
+
+.panel-niveles legend {
+  padding: 0 0.35rem;
+  font-size: 0.78rem;
+  color: var(--crema-apagada);
+}
+
+.panel-niveles label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0.3rem 0;
+  font-size: 0.84rem;
+  color: var(--crema);
+  cursor: pointer;
+}
+
+.panel-niveles label.esta-lleno {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.panel-niveles input[type='radio'] {
+  width: auto;
+  margin: 0;
+  accent-color: var(--naranja);
+}
+
+.panel-niveles label span {
+  flex: 1;
+}
+
+.panel-niveles label small {
+  margin: 0;
+  font-size: 0.72rem;
+  color: #8a76a3;
+}
+
+.panel-poner {
   width: 100%;
   padding: 0.75rem;
   font: inherit;
@@ -413,46 +634,52 @@ button#agregar {
   transition: background 0.14s ease;
 }
 
-button#agregar:hover:not(:disabled) {
+.panel-poner:hover:not(:disabled) {
   background: var(--naranja-claro);
 }
 
-button#agregar:disabled {
+.panel-poner:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 
-/* El aviso de que el nivel ya esta lleno. Aparece ANTES de que la persona
-   intente agregar algo, no despues. */
-.cupo {
-  margin: 0 0 0.8rem;
-  padding: 0.6rem 0.75rem;
-  border-radius: 10px;
-  font-size: 0.82rem;
-  background: rgba(255, 198, 41, 0.14);
-  border: 2px solid var(--amarillo);
-  color: var(--amarillo);
-}
+/* --- Carga, error y pendientes --------------------------------------- */
 
-#aviso {
-  margin-top: 0.8rem;
-  padding: 0.6rem 0.75rem;
-  border-radius: 10px;
-  font-size: 0.82rem;
-  background: rgba(46, 194, 126, 0.14);
-  border: 2px solid var(--verde);
-  color: #8ce8b8;
-}
+/* Nada de esto hacia falta con localStorage, porque leer era instantaneo y
+   nunca fallaba. En cuanto el altar habla por red, los tres son
+   obligatorios: sin ellos un fallo deja la pagina en blanco. */
 
-#aviso.aviso-error {
+.aviso-error {
+  max-width: 68rem;
+  margin: 0 auto 1rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
   background: rgba(224, 54, 110, 0.14);
-  border-color: var(--rosa);
+  border: 2px solid var(--rosa);
   color: #f7a2bd;
 }
 
-#cuenta {
-  color: var(--crema-apagada);
+.aviso-error button {
+  margin-left: 0.5rem;
+  padding: 0.25rem 0.6rem;
+  font: inherit;
   font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--morado);
+  background: var(--crema);
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+/* Un elemento que ya se ve pero todavia no confirma el guardado. */
+.elemento-pendiente {
+  opacity: 0.55;
+}
+
+.nivel-esqueleto {
+  opacity: 0.5;
 }
 
 footer {

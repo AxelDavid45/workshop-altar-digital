@@ -8,69 +8,15 @@
       name="description"
       content="Mi altar de Día de Muertos, construido en el workshop Ofrenda en la Nube."
     />
-    <link rel="stylesheet" href="./estilos.css" />
   </head>
   <body>
+    <!-- El papel picado del fondo. Lo pinta adornos.js con CSS, no es una
+         imagen: asi no hay archivo que pueda faltar. -->
     <div id="papel" aria-hidden="true"></div>
 
-    <header>
-      <p class="encabezado-eyebrow">Día de Muertos</p>
-      <h1>Mi <span>ofrenda</span></h1>
-      <p class="encabezado-sub">Un altar para recordar a alguien, o a algo</p>
-      <p id="modo"></p>
-    </header>
+    <!-- Aqui monta React. Todo lo demas vive en los componentes. -->
+    <div id="root"></div>
 
-    <main>
-      <div id="altar"></div>
-
-      <aside>
-        <h2>Poner algo en el altar</h2>
-        <form id="forma">
-          <label>
-            <span>Tu nombre</span>
-            <input id="nombre" type="text" maxlength="40" placeholder="Cómo te llamas" />
-          </label>
-
-          <label>
-            <span>Qué pones</span>
-            <select id="tipo"></select>
-          </label>
-
-          <label>
-            <span>En qué nivel</span>
-            <select id="nivel">
-              <option value="3">Arriba</option>
-              <option value="2">En medio</option>
-              <option value="1">Abajo</option>
-            </select>
-          </label>
-
-          <label id="campo-texto">
-            <span>Texto</span>
-            <input id="texto" type="text" maxlength="280" />
-          </label>
-
-          <label id="campo-link" hidden>
-            <span>Link de Spotify (opcional)</span>
-            <input id="link" type="url" placeholder="https://open.spotify.com/track/..." />
-          </label>
-
-          <label>
-            <span>Imagen propia (opcional)</span>
-            <input id="imagen" type="file" accept="image/*" />
-          </label>
-
-          <p id="cupo" class="cupo" hidden></p>
-          <button id="agregar" type="submit">Ponerlo en el altar</button>
-          <p id="aviso" hidden></p>
-        </form>
-      </aside>
-    </main>
-
-    <footer>
-      <p><span id="cuenta"></span> · Ofrenda en la Nube · <span id="construido"></span></p>
-    </footer>
-
-    <script type="module" src="./altar.js"></script>
+    <script type="module" src="./src/main.jsx"></script>
   </body>
 </html>

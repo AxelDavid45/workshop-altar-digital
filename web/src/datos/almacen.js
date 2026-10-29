@@ -9,12 +9,18 @@
 //
 // En el modulo 3 este archivo se reescribe para hablarle a tu propia API.
 // Las cuatro funciones de abajo mantienen su firma y siguen siendo async,
-// asi que `altar.js` no se toca ni una linea. Eso es a proposito: cuando
-// la frontera entre tu app y donde viven los datos cabe en un archivo,
-// cambiar de localStorage a una base de datos es un cambio chico y
-// facil de revisar.
+// asi que los componentes no se tocan ni una linea. Eso es a proposito:
+// cuando la frontera entre tu app y donde viven los datos cabe en un
+// archivo, cambiar de localStorage a una base de datos es un cambio chico
+// y facil de revisar.
+//
+// Por eso `agregar` recibe el File crudo de la imagen y lo procesa AQUI:
+// la version de navegador lo guarda como data URL, y la de la nube lo sube
+// a S3. Si el componente hiciera esa conversion, el modulo 3 tendria que
+// tocar dos archivos en vez de uno.
 
-import { setTradicional } from './elementos.js'
+import { setTradicional } from '../catalogo/elementos.js'
+import { reducirADataUrl } from '../lib/imagen.js'
 
 // Este archivo guarda en el navegador, siempre. Por eso el modo esta escrito
 // aqui como un dato y no se deduce de la configuracion: el banner de la
@@ -61,14 +67,23 @@ export async function listar() {
   return leerTodo().sort((a, b) => a.creadoEn.localeCompare(b.creadoEn))
 }
 
-/** Agrega un elemento y devuelve como quedo guardado. */
+/**
+ * Agrega un elemento y devuelve como quedo guardado.
+ *
+ * Si trae `imagen` (el File del formulario), aqui se reduce y se guarda
+ * dentro del elemento como data URL. El componente nunca sabe que paso con
+ * el archivo: solo lo entrega. Por eso cambiar a S3 se hace aqui y en
+ * ningun otro lado.
+ */
 export async function agregar(elemento) {
+  const { imagen, ...resto } = elemento
   const lista = leerTodo()
   const nuevo = {
-    ...elemento,
+    ...resto,
     id: crypto.randomUUID(),
     creadoEn: new Date().toISOString(),
   }
+  if (imagen) nuevo.imagenLocal = await reducirADataUrl(imagen)
   lista.push(nuevo)
   escribirTodo(lista)
   return nuevo

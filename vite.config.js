@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
 
 // Vite construye el altar y lo deja en dist/, que es lo que publica Amplify.
 //
@@ -6,6 +7,8 @@ import { defineConfig } from 'vite'
 // el frontend vive en web/ en lugar de en la raiz, porque la raiz la ocupa
 // la infraestructura de CDK.
 export default defineConfig({
+  plugins: [react()],
+
   root: 'web',
 
   // El .env vive en la raiz del proyecto, no dentro de web/.
