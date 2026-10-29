@@ -19,11 +19,21 @@ frontend:
   phases:
     preBuild:
       commands:
-        # --omit=dev: las devDependencies (CDK, TypeScript, el SDK) solo se
-        # usan en tu laptop, para `cdk synth` y `cdk deploy`. El build del
-        # frontend es Node puro y no las necesita, asi que Amplify no
-        # descarga cientos de megas solo para publicar una pagina estatica.
-        - npm ci --omit=dev
+        # npm ci a secas, sin --omit=dev, y hay una razon concreta.
+        #
+        # Vite es el que construye tu altar, y vive en devDependencies, que
+        # es donde va una herramienta de build. Con --omit=dev npm no lo
+        # descarga, y el build muere con "vite: command not found" aunque
+        # tu codigo este perfecto.
+        #
+        # "dev" en devDependencies NO significa "solo en tu laptop".
+        # Significa "no hace falta para CORRER lo publicado". El contenedor
+        # de Amplify no corre tu sitio: lo CONSTRUYE, y para construirlo
+        # necesita exactamente esas herramientas.
+        #
+        # Si, de paso se baja el CDK, que aqui no se usa. El cache de
+        # node_modules de abajo hace que eso se pague una vez.
+        - npm ci
     build:
       commands:
         - npm run build
