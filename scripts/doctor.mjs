@@ -35,6 +35,8 @@ const aviso = (msg, nota) => {
   if (nota) console.log(gris(`    ${nota}`))
 }
 
+const PERFIL_AWS = 'ofrenda'
+
 // Windows primero: el taller se da con mayoría de Windows en el salón.
 const esWindows = platform() === 'win32'
 const esMac = platform() === 'darwin'
@@ -141,7 +143,7 @@ function revisarAws() {
   if (!existsSync(ruta)) {
     falla(
       'No veo configuración de AWS (~/.aws/config)',
-      'Ejecuta aws login y configura la Región del perfil default'
+      'Ejecuta aws login --profile ofrenda y configura la Región de ese perfil'
     )
     return
   }
@@ -175,25 +177,24 @@ function revisarAws() {
     if (reg && actual) actual.region = reg[1].trim()
   }
 
-  if (perfiles.length === 0) {
+  const perfil = perfiles.find((item) => item.nombre === PERFIL_AWS)
+  if (!perfil) {
     falla(
-      'Tu ~/.aws/config no tiene perfiles',
-      'Ejecuta aws login y configura la Región del perfil default'
+      `No encontré el perfil de AWS "${PERFIL_AWS}"`,
+      `Ejecuta aws login --profile ${PERFIL_AWS} y configura su Región`
     )
     return
   }
 
-  ok(`Perfiles de AWS: ${perfiles.map((p) => p.nombre).join(', ')}`)
+  ok(`Perfil de AWS: ${perfil.nombre}`)
 
-  const sinRegion = perfiles.filter((p) => !p.region)
-  if (sinRegion.length) {
+  if (!perfil.region) {
     falla(
-      `Sin Región: ${sinRegion.map((p) => p.nombre).join(', ')}`,
-      'Vuelve a configurar el Agent Toolkit con la Región de AWS Settings > tu proyecto > Overview.'
+      `El perfil ${PERFIL_AWS} no tiene Región`,
+      `Ejecuta aws configure set region TU-REGION --profile ${PERFIL_AWS}`
     )
   } else {
-    const regiones = [...new Set(perfiles.map((p) => p.region))]
-    ok(`Región: ${regiones.join(', ')}`)
+    ok(`Región: ${perfil.region}`)
   }
 }
 

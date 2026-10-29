@@ -16,6 +16,9 @@ Necesitas:
 - un proyecto en la nueva experiencia de AWS;
 - un agente de programación con Agent Toolkit for AWS configurado.
 
+Durante el setup de AWS usa `ofrenda` como nombre de perfil. Los comandos de
+CDK del workshop lo pasan explícitamente para no tocar otro proyecto por error.
+
 ## Prende el altar
 
 Los comandos son iguales en Windows, macOS y Linux:
@@ -46,9 +49,9 @@ npm run doctor
 npm run dev
 npm run build
 npm run synth
-npm run diff -- --profile default
-npm run deploy -- --profile default
-npm run limpiar -- --profile default
+npm run diff -- --profile ofrenda
+npm run deploy -- --profile ofrenda
+npm run limpiar -- --profile ofrenda
 npm run verify 2 <url-de-amplify>
 npm run verify 3 <url-de-la-api>
 npm run verify 4 <url-de-amplify>
