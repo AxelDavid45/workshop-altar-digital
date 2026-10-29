@@ -2,10 +2,10 @@
 
 ## Introduction
 
-El altar guarda cada cosa que se pone (una flor, una vela, una foto, un recuerdo)
-como un elemento, con la misma forma en `localStorage` y en DynamoDB. Este
-documento es el contrato de la API: `npm run verify 3` lo revisa contra la API
-desplegada, así que si algo de aquí cambia, el verify deja de pasar.
+El altar conserva los mismos campos de contenido cuando pasa de `localStorage` a
+DynamoDB. La versión local puede guardar `imagenLocal`; la API agrega los campos
+internos que necesita para identificar, ordenar y recuperar cada elemento.
+`npm run verify 3` revisa el contrato remoto contra la API desplegada.
 
 Un altar es de una persona y se identifica con `altarId`, un id que el navegador
 genera y guarda. Todos los elementos de un altar comparten ese `altarId`.
@@ -49,8 +49,8 @@ Ruta: `POST /elements`. Cuerpo con `altarId` y los campos del elemento.
    y no guardar nada.
 5. SI falta `tipo`, ENTONCES LA API DEBE responder 400.
 6. LA API DEBE aceptar solo estos campos del cliente: `tipo`, `nivel`,
-   `posicion`, `texto`, `link`, `puestoPor`, `imageKey`. Cualquier otro se
-   ignora.
+   `texto`, `link`, `puestoPor`, `imageKey`. `posicion` se ignora y se calcula
+   en el servidor; cualquier otro campo también se ignora.
 
 ### Requisito 2: Quitar un elemento
 
@@ -58,8 +58,7 @@ Ruta: `POST /elements`. Cuerpo con `altarId` y los campos del elemento.
 corregir el altar.
 
 Ruta: `POST /elements` con `{ "altarId": "...", "borrar": true, "id": "..." }`.
-Se usa la misma ruta para no sumar una ruta de `DELETE` (API Gateway configura y
-cobra por ruta).
+Se usa la misma ruta para mantener corto el contrato que revisas durante el taller.
 
 #### Criterios de aceptación
 
@@ -83,6 +82,12 @@ Ruta: `GET /elements?altarId=...`, abierta (sin credenciales).
    empieza con la fecha, así que un Query ascendente ya los ordena).
 4. Cada elemento de la lista NO DEBE traer `sk`.
 5. SI falta `altarId`, ENTONCES LA API DEBE responder 400.
+6. EN LA VERSIÓN DE NUBE, el frontend DEBE usar el hostname de la página como
+   `altarId`, para que la misma URL consulte el mismo altar desde cualquier
+   dispositivo.
+7. EN LA PRIMERA CARGA DESDE LA LAPTOP, si la API está vacía, `almacen.js` DEBE
+   importar los elementos existentes de `ofrenda:elementos` en `localStorage`,
+   incluidas las imágenes guardadas como data URL.
 
 ### Requisito 4: Subir una imagen propia
 

@@ -71,8 +71,10 @@ elementos del altar:
 
 ### Las tres Lambdas y sus permisos
 
-Cada Lambda lleva solo los permisos que usa. Nada de `Resource: '*'` ni policies
-administradas.
+Cada Lambda recibe permisos de datos acotados a la tabla o al bucket concretos.
+No se agregan policies `FullAccess` ni permisos de DynamoDB o S3 con
+`Resource: '*'`. La policy básica que CDK adjunta para escribir logs en
+CloudWatch es esperada.
 
 | Handler | Archivo | Permiso | Por qué |
 | --- | --- | --- | --- |
@@ -109,10 +111,12 @@ Cada handler devuelve `{ statusCode, headers, body }` con los headers de CORS
   `{ borrado }`. Si no, filtra los campos permitidos, cuenta cuántos hay en el
   nivel para la `posicion`, arma `id`, `creadoEn` y `sk`, hace `PutCommand` y
   responde 201 con el elemento sin `sk`.
-- **`subir`**: si es `GET`, firma un `GetObjectCommand` (1 hora) y responde
-  `{ url }`. Si es `POST`, valida el `contentType`, arma la `imageKey`
-  (`<altarId>/<uuid>.<ext>`), firma un `PutObjectCommand` (5 min) y responde
-  `{ url, imageKey }`.
+- **`subir`**: crea `S3Client` con
+  `requestChecksumCalculation: 'WHEN_REQUIRED'`, para no firmar el checksum de
+  un cuerpo vacío en la URL de `PUT`. Si es `GET`, firma un `GetObjectCommand`
+  (hasta 1 hora) y responde `{ url }`. Si es `POST`, valida el `contentType`,
+  arma la `imageKey` (`<altarId>/<uuid>.<ext>`), firma un `PutObjectCommand`
+  (5 min) y responde `{ url, imageKey }`.
 
 ## El frontend en el módulo 3
 
@@ -124,12 +128,17 @@ funciones (`listar`, `agregar`, `borrar`, `urlDeImagen`) mantienen su firma, as�
 que no se toca ni un componente.
 
 - La URL de la API sale de `import.meta.env.VITE_API_URL` (nunca escrita en el
-  código).
+  código) y se normaliza sin diagonal final.
 - `MODO` pasa de `'navegador'` a `'nube'`, para que el banner de la página diga
   la verdad.
-- `altar.js` cambia en una línea: en vez de reducir la imagen a data URL en
-  `imagenLocal`, pasa el `File` crudo en `imagen`, y `almacen.js` se encarga de
-  reducirlo y subirlo a S3.
+- `altarId` sale de `window.location.hostname`. La URL de Amplify identifica el
+  altar y por eso la laptop y el teléfono consultan la misma partición.
+- En la primera carga desde la laptop, si la API todavía está vacía,
+  `almacen.js` importa la lista `ofrenda:elementos` de `localStorage`. Si un
+  elemento trae `imagenLocal`, la convierte a `Blob`, la sube con una URL
+  firmada y guarda el `imageKey`.
+- Ningún componente cambia: desde `main`, `agregar` ya recibe el `File` crudo y
+  `almacen.js` decide si convertirlo a data URL o subirlo a S3.
 
 Esta versión vive en la rama de rescate `modulo-3`.
 

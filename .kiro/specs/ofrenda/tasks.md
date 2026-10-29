@@ -27,20 +27,28 @@ en el módulo 3 y la 2 en el módulo 4.
 
 ## Tasks
 
-- [ ] 1. Escribir el stack y los tres handlers (módulo 3)
+- [ ] 1. Escribir el backend y mover el altar a la nube (módulo 3)
   - Escribe `infra/ofrenda-stack.ts` siguiendo **Architecture**, **Data Models** y
     **Components and Interfaces** de `design.md`: la tabla, el bucket privado, las
-    tres Lambdas con sus permisos mínimos y la REST API con sus cuatro rutas.
+    tres Lambdas con permisos acotados a sus recursos y la REST API con cuatro rutas.
   - Escribe los tres handlers en `lambda/` (`listar.js`, `agregar.js`,
     `subir.js`) siguiendo la sección **Los handlers** de `design.md`, en
     JavaScript plano con `import` (ESM).
   - Crea `lambda/package.json` con `{ "type": "module" }`. Sin él las Lambdas no
     cargan.
-  - No uses `NodejsFunction`. No uses `Resource: '*'` ni policies administradas:
-    cada Lambda lleva solo su `grant...` sobre la tabla o el bucket.
+  - Reescribe únicamente `web/src/datos/almacen.js` para usar la API. Mantén las
+    firmas de `listar`, `agregar`, `borrar` y `urlDeImagen`, y cambia `MODO` a
+    `'nube'`.
+  - Usa el hostname de la página como `altarId`, para que la misma URL abra el
+    mismo altar en la laptop y en el teléfono. En la primera carga desde la
+    laptop, si la API está vacía, importa los elementos de `ofrenda:elementos`
+    que ya existen en `localStorage`, incluidas sus imágenes.
+  - No uses `NodejsFunction`. No agregues policies de datos con `Resource: '*'`
+    ni policies `FullAccess`: cada Lambda queda acotada a la tabla o al bucket.
+    La policy básica que CDK agrega para escribir logs en CloudWatch es esperada.
   - No agregues dependencias: el SDK de AWS v3 ya viene en el runtime.
-  - Al terminar, corre `npm run synth` (solo sintetiza, no despliega) y confirma
-    que pasa. El asistente revisa el diff y despliega con `npm run deploy`.
+  - Al terminar, corre `npm run synth` y `npm run build`. Solo validan; no
+    despliegan. El asistente revisa el diff y ejecuta el deploy.
   - _Requisitos: 1, 2, 3, 4, 5_
 
 - [ ] 2. Agregar un tipo de elemento nuevo (módulo 4)

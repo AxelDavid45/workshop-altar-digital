@@ -36,9 +36,10 @@ de leer.
   con `blockPublicAccess: BLOCK_ALL`, `removalPolicy: DESTROY` y
   `autoDeleteObjects: true`. Sin esas tres, el cierre del taller se rompe para
   quien subió una imagen.
-- **No usas `Resource: '*'` ni policies administradas** (nada de
-  `AmazonDynamoDBFullAccess` ni parecidas). Cada Lambda lleva solo los permisos
-  que usa, con `grant...` sobre la tabla o el bucket concretos.
+- **No agregas permisos amplios sobre los datos.** Nada de
+  `AmazonDynamoDBFullAccess`, `AmazonS3FullAccess` ni permisos de DynamoDB o S3
+  con `Resource: '*'`. Usa los grants sobre la tabla o el bucket concretos. La
+  policy básica que CDK adjunta para escribir logs en CloudWatch es esperada.
 - **No cambias el contrato de la API** (rutas, status codes, nombres de campos)
   que define `requirements.md`. Si cambia, `npm run verify` deja de pasar.
 - **No agregas dependencias nuevas** a `package.json`. El SDK de AWS v3 ya viene

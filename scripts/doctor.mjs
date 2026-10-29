@@ -4,9 +4,9 @@
 // el altar, y cuando algo falta imprime el comando de arreglo para TU
 // sistema operativo.
 //
-// Corre con Node puro, sin instalar nada y sin tocar la red. Por eso no
-// usa el AWS CLI (que en este taller no se instala) ni ninguna
-// dependencia: tiene que funcionar aunque sea lo primero que corres.
+// Corre con Node puro y sin tocar la red. AWS CLI sí es un requisito del
+// prework porque instala el Agent Toolkit, así que también comprobamos su
+// versión antes de revisar la configuración local.
 
 import { execFileSync } from 'node:child_process'
 import { readFileSync, existsSync } from 'node:fs'
@@ -48,12 +48,13 @@ function arreglo(windows, unix) {
 // Node
 // ---------------------------------------------------------------------
 function revisarNode() {
-  const mayor = Number(process.versions.node.split('.')[0])
-  if (mayor >= 22) {
+  const [mayor, menor] = process.versions.node.split('.').map(Number)
+  const compatible = mayor > 22 || (mayor === 22 && menor >= 12)
+  if (compatible) {
     ok(`Node ${process.versions.node}`)
   } else {
     falla(
-      `Node ${process.versions.node} (necesitas 22 o superior)`,
+      `Node ${process.versions.node} (necesitas 22.12 o superior)`,
       arreglo(
         'winget install OpenJS.NodeJS.LTS   (o bájalo de https://nodejs.org)',
         esMac
@@ -95,10 +96,36 @@ function revisarGit() {
 }
 
 function revisarNpm() {
-  // npm viene con Node, asi que si falta es raro, pero lo confirmamos.
-  const v = versionDe(esWindows ? 'npm.cmd' : 'npm', ['--version'])
+  // npm viene con Node. En Windows es npm.cmd, y los archivos .cmd se
+  // ejecutan mediante cmd.exe en vez de lanzarlos como un .exe.
+  const v = esWindows
+    ? versionDe(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', 'npm --version'])
+    : versionDe('npm', ['--version'])
   if (v) ok(`npm ${v}`)
   else falla('No encontré npm', 'Reinstala Node desde https://nodejs.org (npm viene incluido)')
+}
+
+function revisarAwsCli() {
+  const v = versionDe(esWindows ? 'aws.exe' : 'aws', ['--version'])
+  if (!v) {
+    falla(
+      'No encontré AWS CLI',
+      'Instala AWS CLI 2.35.0 o superior desde https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html'
+    )
+    return
+  }
+
+  const version = v.match(/aws-cli\/(\d+)\.(\d+)\.(\d+)/)
+  const compatible = version &&
+    (Number(version[1]) > 2 || (Number(version[1]) === 2 && Number(version[2]) >= 35))
+
+  if (compatible) ok(`AWS CLI ${version[1]}.${version[2]}.${version[3]}`)
+  else {
+    falla(
+      `${v} (necesitas AWS CLI 2.35.0 o superior)`,
+      'Actualiza AWS CLI antes de continuar'
+    )
+  }
 }
 
 // ---------------------------------------------------------------------
@@ -114,7 +141,7 @@ function revisarAws() {
   if (!existsSync(ruta)) {
     falla(
       'No veo configuración de AWS (~/.aws/config)',
-      'Corre el prompt del Agent Toolkit para AWS; ahí se configura tu proyecto'
+      'Ejecuta aws login y configura la Región del perfil default'
     )
     return
   }
@@ -127,15 +154,21 @@ function revisarAws() {
     return
   }
 
-  // Parseo mínimo de INI: secciones [profile X] o [default] y su region.
+  // Solo [default] y [profile X] son perfiles. Otras secciones, como
+  // [sso-session X], no necesitan una Región propia.
   const perfiles = []
   let actual = null
   for (const linea of texto.split('\n')) {
     const l = linea.trim()
-    const sec = l.match(/^\[(?:profile\s+)?([^\]]+)\]$/)
-    if (sec) {
-      actual = { nombre: sec[1].trim(), region: null }
+    const porDefecto = l.match(/^\[default\]$/)
+    const conNombre = l.match(/^\[profile\s+([^\]]+)\]$/)
+    if (porDefecto || conNombre) {
+      actual = { nombre: conNombre?.[1].trim() || 'default', region: null }
       perfiles.push(actual)
+      continue
+    }
+    if (/^\[.*\]$/.test(l)) {
+      actual = null
       continue
     }
     const reg = l.match(/^region\s*=\s*(.+)$/)
@@ -145,7 +178,7 @@ function revisarAws() {
   if (perfiles.length === 0) {
     falla(
       'Tu ~/.aws/config no tiene perfiles',
-      'Corre el prompt del Agent Toolkit para AWS'
+      'Ejecuta aws login y configura la Región del perfil default'
     )
     return
   }
@@ -154,9 +187,9 @@ function revisarAws() {
 
   const sinRegion = perfiles.filter((p) => !p.region)
   if (sinRegion.length) {
-    aviso(
+    falla(
       `Sin Región: ${sinRegion.map((p) => p.nombre).join(', ')}`,
-      'Confirma tu Región en AWS Settings > tu proyecto > Overview. Los recursos solo se crean ahí.'
+      'Vuelve a configurar el Agent Toolkit con la Región de AWS Settings > tu proyecto > Overview.'
     )
   } else {
     const regiones = [...new Set(perfiles.map((p) => p.region))]
@@ -170,6 +203,7 @@ function main() {
   revisarNode()
   revisarGit()
   revisarNpm()
+  revisarAwsCli()
   revisarAws()
 
   console.log(
