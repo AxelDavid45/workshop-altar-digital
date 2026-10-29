@@ -7,12 +7,14 @@
   "scripts": {
     "doctor": "node scripts/doctor.mjs",
     "verify": "node scripts/verify.mjs",
+    "rescate": "node scripts/rescate.mjs",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "synth": "cdk synth",
     "diff": "cdk diff",
-    "deploy": "cdk deploy"
+    "deploy": "cdk deploy",
+    "limpiar": "cdk destroy"
   },
   "devDependencies": {
     "@aws-sdk/client-dynamodb": "3.1154.0",
@@ -29,7 +31,7 @@
     "vite": "8.3.4"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12.0"
   },
   "dependencies": {
     "react": "19.3.1",

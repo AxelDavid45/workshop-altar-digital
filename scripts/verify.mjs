@@ -116,65 +116,133 @@ async function checkpointSitio(url, { bundleConApi = false } = {}) {
 async function checkpointBackend(apiArg) {
   const API = resolverApi(apiArg)
   const altarId = `verify-${Date.now()}`
-  let creadoId = null
+  const creados = []
 
-  // 1. Crear un elemento
-  const post = await fetch(`${API}/elements`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ altarId, tipo: 'vela', nivel: 2, texto: 'verify' }),
-  })
-  esperar(
-    post.status === 201,
-    `POST /elements respondió ${post.status}`,
-    post.status === 502 || post.status === 500
-      ? 'La Lambda revienta. ¿Falta lambda/package.json con {"type":"module"}? Revisa los logs en CloudWatch'
-      : 'Revisa que desplegaste el stack con cdk deploy'
-  )
-  const creado = await post.json()
-  esperar(creado.id, 'El POST no devolvió el id del elemento')
-  creadoId = creado.id
-
-  // 2. Listarlo y encontrarlo
-  const get = await fetch(`${API}/elements?altarId=${altarId}`)
-  esperar(get.status === 200, `GET /elements respondió ${get.status}`)
-  const lista = await get.json()
-  esperar(Array.isArray(lista.elementos), 'El GET no trae la lista "elementos"')
-  esperar(
-    lista.elementos.some((e) => e.id === creadoId),
-    'El elemento que acabo de crear no aparece en el GET',
-    '¿El listar usa Query por altarId? Revisa lambda/listar.js'
-  )
-
-  // 3. Pedir una URL firmada de subida
-  const up = await fetch(`${API}/uploads`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ altarId, contentType: 'image/jpeg' }),
-  })
-  esperar(up.status === 200, `POST /uploads respondió ${up.status}`)
-  const firma = await up.json()
-  esperar(firma.url && firma.imageKey, 'El POST /uploads no devolvió url + imageKey')
-  esperar(/X-Amz-Signature=/.test(firma.url), 'La URL de subida no viene firmada')
-
-  // 4. Validación: POST sin altarId debe ser 400
-  const malo = await fetch(`${API}/elements`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tipo: 'vela' }),
-  })
-  esperar(malo.status === 400, `POST /elements sin altarId respondió ${malo.status}, esperaba 400`)
-
-  // Limpieza: borrar el elemento de prueba
-  if (creadoId) {
-    await fetch(`${API}/elements`, {
+  async function borrarPrueba(id) {
+    return fetch(`${API}/elements`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ altarId, borrar: true, id: creadoId }),
-    }).catch(() => {})
+      body: JSON.stringify({ altarId, borrar: true, id }),
+    })
   }
 
-  return `crear, listar, subir y validar — todo contra ${new URL(API).hostname}`
+  try {
+    // 1. El preflight debe permitir que un navegador llame a la API.
+    const options = await fetch(`${API}/elements`, {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'https://verify.example',
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'Content-Type',
+      },
+    })
+    esperar(options.ok, `OPTIONS /elements respondió ${options.status}`)
+    esperar(
+      options.headers.get('access-control-allow-origin'),
+      'El preflight no devolvió Access-Control-Allow-Origin'
+    )
+
+    // 2. Crear dos elementos. El segundo permite probar el bug de Limit + filtro.
+    for (const texto of ['primero', 'segundo']) {
+      const post = await fetch(`${API}/elements`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ altarId, tipo: 'vela', nivel: 2, texto }),
+      })
+      esperar(
+        post.status === 201,
+        `POST /elements respondió ${post.status}`,
+        post.status === 502 || post.status === 500
+          ? '¿Falta lambda/package.json con {"type":"module"}? Revisa CloudWatch'
+          : 'Revisa que desplegaste el stack con npm run deploy'
+      )
+      const creado = await post.json()
+      esperar(creado.id, 'El POST no devolvió el id del elemento')
+      creados.push(creado.id)
+    }
+
+    // 3. Listarlos y encontrarlos.
+    const get = await fetch(`${API}/elements?altarId=${altarId}`)
+    esperar(get.status === 200, `GET /elements respondió ${get.status}`)
+    const lista = await get.json()
+    esperar(Array.isArray(lista.elementos), 'El GET no trae la lista "elementos"')
+    for (const id of creados) {
+      esperar(
+        lista.elementos.some((elemento) => elemento.id === id),
+        `El elemento ${id} no aparece en el GET`,
+        '¿El listar usa Query por altarId? Revisa lambda/listar.js'
+      )
+    }
+
+    // 4. Firmar, subir bytes reales y volver a leerlos.
+    const up = await fetch(`${API}/uploads`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ altarId, contentType: 'image/jpeg' }),
+    })
+    esperar(up.status === 200, `POST /uploads respondió ${up.status}`)
+    const firma = await up.json()
+    esperar(firma.url && firma.imageKey, 'POST /uploads no devolvió url + imageKey')
+    esperar(/X-Amz-Signature=/.test(firma.url), 'La URL de subida no viene firmada')
+
+    const imagen = Buffer.from([0xff, 0xd8, 0xff, 0xd9])
+    const put = await fetch(firma.url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'image/jpeg' },
+      body: imagen,
+    })
+    esperar(
+      put.ok,
+      `El PUT firmado a S3 respondió ${put.status}`,
+      'Revisa requestChecksumCalculation en lambda/subir.js y el CORS del bucket'
+    )
+
+    const lectura = await fetch(`${API}/uploads/${firma.imageKey}`)
+    esperar(lectura.status === 200, `GET /uploads/<imageKey> respondió ${lectura.status}`)
+    const firmaLectura = await lectura.json()
+    esperar(firmaLectura.url, 'La lectura no devolvió una URL firmada')
+    const descarga = await fetch(firmaLectura.url)
+    esperar(descarga.ok, `La descarga firmada respondió ${descarga.status}`)
+    esperar((await descarga.arrayBuffer()).byteLength === imagen.length, 'La imagen cambió en S3')
+
+    // 5. Validaciones del contrato.
+    const sinAltar = await fetch(`${API}/elements`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tipo: 'vela' }),
+    })
+    esperar(sinAltar.status === 400, `POST sin altarId respondió ${sinAltar.status}`)
+
+    const sinTipo = await fetch(`${API}/elements`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ altarId }),
+    })
+    esperar(sinTipo.status === 400, `POST sin tipo respondió ${sinTipo.status}`)
+
+    // 6. Borrar el segundo elemento y confirmar que de verdad desapareció.
+    const segundo = creados[1]
+    const borrado = await borrarPrueba(segundo)
+    esperar(
+      borrado.status === 200,
+      `Borrar el segundo elemento respondió ${borrado.status}`,
+      'DynamoDB aplica Limit antes de FilterExpression; revisa lambda/agregar.js'
+    )
+    creados.splice(1, 1)
+
+    const despues = await fetch(`${API}/elements?altarId=${altarId}`).then((r) => r.json())
+    esperar(
+      !despues.elementos.some((elemento) => elemento.id === segundo),
+      'El elemento borrado todavía aparece en el GET'
+    )
+
+    return `CORS, crear, listar, subir, leer, validar y borrar — ${new URL(API).hostname}`
+  } finally {
+    // Limpieza best-effort, incluso cuando una comprobación anterior falla.
+    for (const id of creados) {
+      await borrarPrueba(id).catch(() => {})
+    }
+  }
 }
 
 // ---------------------------------------------------------------------
