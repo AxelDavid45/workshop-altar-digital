@@ -4,108 +4,197 @@
 //  ESTE ES EL UNICO ARCHIVO QUE CAMBIA EN EL MODULO 3.
 // ---------------------------------------------------------------------
 //
-// Ahora mismo todo se guarda en el localStorage de ESTE navegador. Por eso
-// si abres tu altar en el telefono no esta ahi: nunca salio de tu laptop.
+// Hasta el modulo 2 todo se guardaba en el localStorage de ESTE navegador.
+// Por eso si abrias tu altar en el telefono no estaba ahi: nunca salio de
+// tu laptop.
 //
-// En el modulo 3 este archivo se reescribe para hablarle a tu propia API.
-// Las cuatro funciones de abajo mantienen su firma y siguen siendo async,
-// asi que los componentes no se tocan ni una linea. Eso es a proposito:
-// cuando la frontera entre tu app y donde viven los datos cabe en un
-// archivo, cambiar de localStorage a una base de datos es un cambio chico
-// y facil de revisar.
+// Esta es la version reescrita para hablarle a tu propia API. Compárala con
+// la de `main` y fijate en lo que NO cambio:
 //
-// Por eso `agregar` recibe el File crudo de la imagen y lo procesa AQUI:
-// la version de navegador lo guarda como data URL, y la de la nube lo sube
-// a S3. Si el componente hiciera esa conversion, el modulo 3 tendria que
-// tocar dos archivos en vez de uno.
+//   - Las cuatro funciones tienen la misma firma y siguen siendo async,
+//     aunque localStorage sea sincrono. Eso estaba puesto desde el
+//     principio justo para este momento.
+//   - `agregar` sigue recibiendo el File crudo de la imagen. Lo que cambia
+//     es a donde va: antes se volvia un data URL guardado en el navegador,
+//     ahora se sube a S3 y el elemento guarda solo su llave.
+//   - NI UN COMPONENTE se toca. Ni el hook que maneja el estado. Lo unico
+//     que sabe de donde salen los datos es este archivo.
+//
+// Cuando la frontera entre tu app y donde viven tus datos cabe en un
+// archivo, mudarte de localStorage a una base de datos es un cambio chico
+// y facil de revisar. Eso no fue suerte: fue el diseño.
+//
+// La URL de tu API no va en el codigo. Va como VITE_API_URL en las
+// variables de entorno de Amplify, y Vite la mete al bundle al construir.
+// En tu laptop, si quieres apuntar tu altar local a tu API, copia
+// .env.example como .env y ponla ahi.
 
-import { setTradicional } from '../catalogo/elementos.js'
-import { reducirADataUrl } from '../lib/imagen.js'
+import { reducirABlob } from '../lib/imagen.js'
 
-// Este archivo guarda en el navegador, siempre. Por eso el modo esta escrito
+// Este archivo guarda en la nube, siempre. Por eso el modo esta escrito
 // aqui como un dato y no se deduce de la configuracion: el banner de la
 // pagina tiene que decir lo que ESTE archivo hace de verdad, no lo que
-// alguien puso en una variable de entorno. Cuando lo reescribas para
-// hablarle a tu API, cambias esta linea a 'nube' y el banner se acomoda.
-export const MODO = 'navegador'
+// alguien puso en una variable de entorno.
+export const MODO = 'nube'
 
-const LLAVE = 'ofrenda:elementos'
+// La base de tu API. Sale del output de `cdk deploy` y va como
+// VITE_API_URL en Amplify. Vite solo expone al navegador las variables
+// que empiezan con VITE_, justo para que no se te escape un secreto.
+const API = import.meta.env.VITE_API_URL
+
+const LLAVE_ALTAR = 'ofrenda:altarId'
 const LLAVE_NOMBRE = 'ofrenda:nombre'
 
-function leerTodo() {
-  try {
-    const crudo = localStorage.getItem(LLAVE)
-    if (crudo === null) {
-      // Primera vez: el altar arranca con su set tradicional.
-      const semilla = setTradicional()
-      localStorage.setItem(LLAVE, JSON.stringify(semilla))
-      return semilla
-    }
-    const lista = JSON.parse(crudo)
-    return Array.isArray(lista) ? lista : []
-  } catch {
-    // Si el localStorage trae basura, mejor un altar vacio que una pagina
-    // rota. No lo borramos solo: puede ser el altar de alguien.
-    console.warn('No pude leer el altar guardado en este navegador.')
-    return []
+// Tu altar tiene un ID unico. Se genera la primera vez y se guarda en
+// localStorage, asi que es el mismo en tu laptop y en tu telefono solo
+// si lo copias. Para este taller, cada persona tiene su propio altar.
+function altarId() {
+  let id = localStorage.getItem(LLAVE_ALTAR)
+  if (!id) {
+    id = crypto.randomUUID()
+    localStorage.setItem(LLAVE_ALTAR, id)
   }
+  return id
 }
 
-function escribirTodo(lista) {
-  try {
-    localStorage.setItem(LLAVE, JSON.stringify(lista))
-  } catch {
-    throw new Error(
-      'Ya no cabe nada mas en este navegador. Borra algun elemento con imagen, ' +
-        'o construye tu backend para que las imagenes vivan en S3.'
-    )
-  }
+/** El mensaje de error que mando la API, o uno de respaldo. */
+async function errorDe(respuesta, respaldo) {
+  const cuerpo = await respuesta.json().catch(() => ({}))
+  return new Error(cuerpo.error || respaldo)
 }
+
+// ---------------------------------------------------------------------
+// Imagenes
+// ---------------------------------------------------------------------
+
+// Pide una URL firmada a la API y sube el archivo directo a S3.
+//
+// La imagen NUNCA pasa por la Lambda: el altar pide permiso, la API le da
+// una URL que vive 5 minutos, y el navegador sube ahi. Por eso puedes
+// subir una foto de 8 megas sin que la Lambda se quede sin memoria.
+async function subirImagen(archivo) {
+  const blob = await reducirABlob(archivo)
+
+  const permiso = await fetch(`${API}/uploads`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      altarId: altarId(),
+      contentType: 'image/jpeg',
+    }),
+  })
+  if (!permiso.ok) {
+    throw await errorDe(permiso, 'No pude pedir permiso para subir la imagen.')
+  }
+
+  const { url, imageKey } = await permiso.json()
+
+  // El PUT va directo a S3, no a tu API. Por eso S3 tiene que aceptar el
+  // origen de tu pagina (CORS), y por eso la URL firmada lleva la
+  // autorizacion dentro.
+  const subida = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'image/jpeg' },
+    body: blob,
+  })
+  if (!subida.ok) {
+    throw new Error('No pude subir la imagen a S3.')
+  }
+
+  return imageKey
+}
+
+// ---------------------------------------------------------------------
+// Las cuatro funciones que el resto de la app conoce
+// ---------------------------------------------------------------------
 
 /** Todos los elementos del altar, ordenados por cuando se pusieron. */
 export async function listar() {
-  return leerTodo().sort((a, b) => a.creadoEn.localeCompare(b.creadoEn))
+  const respuesta = await fetch(`${API}/elements?altarId=${altarId()}`)
+  if (!respuesta.ok) {
+    throw await errorDe(respuesta, 'No pude leer tu altar.')
+  }
+  const { elementos } = await respuesta.json()
+  return elementos.sort((a, b) => a.creadoEn.localeCompare(b.creadoEn))
 }
 
 /**
  * Agrega un elemento y devuelve como quedo guardado.
  *
- * Si trae `imagen` (el File del formulario), aqui se reduce y se guarda
- * dentro del elemento como data URL. El componente nunca sabe que paso con
- * el archivo: solo lo entrega. Por eso cambiar a S3 se hace aqui y en
- * ningun otro lado.
+ * Si trae `imagen` (el File del formulario), primero se sube a S3 y el
+ * elemento que viaja a la API lleva solo su `imageKey`. El componente
+ * entrega el archivo y no se entera de nada de esto.
  */
 export async function agregar(elemento) {
   const { imagen, ...resto } = elemento
-  const lista = leerTodo()
-  const nuevo = {
-    ...resto,
-    id: crypto.randomUUID(),
-    creadoEn: new Date().toISOString(),
+  let imageKey
+  if (imagen) {
+    imageKey = await subirImagen(imagen)
   }
-  if (imagen) nuevo.imagenLocal = await reducirADataUrl(imagen)
-  lista.push(nuevo)
-  escribirTodo(lista)
-  return nuevo
+
+  const respuesta = await fetch(`${API}/elements`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      altarId: altarId(),
+      ...resto,
+      ...(imageKey && { imageKey }),
+    }),
+  })
+  if (!respuesta.ok) {
+    throw await errorDe(respuesta, 'No pude agregar el elemento.')
+  }
+  return respuesta.json()
 }
 
 /** Quita un elemento del altar. */
 export async function borrar(id) {
-  escribirTodo(leerTodo().filter((el) => el.id !== id))
+  const respuesta = await fetch(`${API}/elements`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      altarId: altarId(),
+      borrar: true,
+      id,
+    }),
+  })
+  if (!respuesta.ok) {
+    throw await errorDe(respuesta, 'No pude quitar el elemento.')
+  }
 }
 
 /**
  * De donde sale la imagen de un elemento.
  *
- * En el navegador la imagen viaja dentro del propio elemento como data URL.
- * Cuando el altar vive en la nube, aqui va la URL firmada de S3 y el
- * elemento solo guarda su `imageKey`.
+ * En la nube el elemento solo guarda su `imageKey`. El bucket es privado,
+ * asi que para ver la imagen el navegador le pide a la API una URL firmada
+ * de lectura. El navegador nunca necesita saber el nombre del bucket: la
+ * API lo sabe y firma por el. Esa URL vive una hora.
+ *
+ * Es la forma que AWS recomienda para objetos privados: el bucket queda
+ * cerrado y la unica puerta es una URL firmada con fecha de caducidad.
  */
 export async function urlDeImagen(elemento) {
-  return elemento.imagenLocal || null
+  if (!elemento.imageKey) return null
+  const respuesta = await fetch(`${API}/uploads/${elemento.imageKey}`)
+  if (!respuesta.ok) {
+    // Si una imagen no se puede leer, el altar muestra el arte por
+    // default en vez de romperse entero por una foto.
+    console.warn('No pude leer la imagen', elemento.imageKey)
+    return null
+  }
+  const { url } = await respuesta.json()
+  return url
 }
 
-/** Quien esta poniendo cosas en el altar. Se pregunta una sola vez. */
+// ---------------------------------------------------------------------
+// Nombre
+// ---------------------------------------------------------------------
+
+// El nombre se queda en localStorage incluso en modo nube: es de quien
+// esta armando el altar en ESTE navegador, no del altar.
+
+/** Quien esta poniendo cosas en el altar. */
 export function nombre() {
   return localStorage.getItem(LLAVE_NOMBRE) || ''
 }
