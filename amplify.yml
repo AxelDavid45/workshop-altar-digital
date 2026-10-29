@@ -1,0 +1,36 @@
+# Como construye y publica Amplify tu altar.
+#
+# Amplify lee este archivo en cada push a tu rama y corre el build en un
+# contenedor Linux suyo, no en tu laptop. Da igual si trabajas en Windows,
+# mac o Linux: lo que se publica se construyo alla.
+#
+# La URL de tu API no va en el codigo. Va como variable de entorno
+# VITE_API_URL en la consola de Amplify (App settings > Environment
+# variables), y Vite la mete en el bundle al construir. Cambiarla es
+# cambiar la variable y darle redeploy: cero commits.
+#
+# El prefijo VITE_ no es decorativo. Vite solo expone al navegador las
+# variables que empiezan asi, justo para que no se te escape un secreto
+# al bundle por accidente. Y por eso mismo: lo que pongas en VITE_API_URL
+# es publico, porque viaja en el JavaScript que descarga cualquiera.
+
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        # --omit=dev: las devDependencies (CDK, TypeScript, el SDK) solo se
+        # usan en tu laptop, para `cdk synth` y `cdk deploy`. El build del
+        # frontend es Node puro y no las necesita, asi que Amplify no
+        # descarga cientos de megas solo para publicar una pagina estatica.
+        - npm ci --omit=dev
+    build:
+      commands:
+        - npm run build
+  artifacts:
+    baseDirectory: dist
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*

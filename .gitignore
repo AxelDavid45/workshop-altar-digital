@@ -1,0 +1,10 @@
+node_modules/
+dist/
+cdk.out/
+
+# Tu configuracion local. El .env.example si se sube, el .env no.
+.env
+.env.local
+
+.DS_Store
+*.log

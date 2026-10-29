@@ -1,0 +1,33 @@
+{
+  "name": "starter-ofrenda",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ofrenda en la Nube: tu altar de Dia de Muertos desplegado en AWS",
+  "type": "module",
+  "scripts": {
+    "doctor": "node scripts/doctor.mjs",
+    "verify": "node scripts/verify.mjs",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "synth": "cdk synth",
+    "diff": "cdk diff",
+    "deploy": "cdk deploy"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-dynamodb": "3.1154.0",
+    "@aws-sdk/client-s3": "3.1154.0",
+    "@aws-sdk/lib-dynamodb": "3.1154.0",
+    "@aws-sdk/s3-request-presigner": "3.1154.0",
+    "@types/node": "26.6.5",
+    "aws-cdk": "2.1146.0",
+    "aws-cdk-lib": "2.274.0",
+    "constructs": "10.8.1",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "vite": "8.3.4"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
