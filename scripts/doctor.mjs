@@ -49,12 +49,12 @@ function arreglo(windows, unix) {
 // ---------------------------------------------------------------------
 function revisarNode() {
   const [mayor, menor] = process.versions.node.split('.').map(Number)
-  const compatible = mayor > 22 || (mayor === 22 && menor >= 12)
+  const compatible = mayor === 24 && menor >= 11
   if (compatible) {
     ok(`Node ${process.versions.node}`)
   } else {
     falla(
-      `Node ${process.versions.node} (necesitas 22.12 o superior)`,
+      `Node ${process.versions.node} (necesitas Node 24.11 o superior dentro de la línea 24)`,
       arreglo(
         'winget install OpenJS.NodeJS.LTS   (o bájalo de https://nodejs.org)',
         esMac

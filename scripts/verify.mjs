@@ -1,7 +1,7 @@
 // npm run verify <N> [url o api-url]
 //
 // Los checkpoints de cada módulo, probados de verdad contra lo que ya
-// desplegaste. Corre con Node puro (fetch nativo de Node 22), sin AWS CLI
+// desplegaste. Corre con Node puro (fetch nativo de Node 24), sin AWS CLI
 // y sin dependencias.
 //
 //   npm run verify 2 https://main.<app-id>.amplifyapp.com   tu página publicada
