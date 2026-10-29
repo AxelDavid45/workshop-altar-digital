@@ -126,7 +126,7 @@ que no venía, para ver que eso no toca el backend.
 
 #### Criterios de aceptación
 
-1. CUANDO se agrega un tipo nuevo, SOLO DEBE tocar el frontend (`web/elementos.js`
-   y `web/arte.js`): un valor nuevo de `tipo`, su etiqueta y su dibujo.
+1. CUANDO se agrega un tipo nuevo, SOLO DEBE tocar el frontend (`web/src/catalogo/elementos.js`
+   y `web/src/catalogo/arte.js`): un valor nuevo de `tipo`, su etiqueta y su dibujo.
 2. EL BACKEND NO DEBE cambiar: `tipo` es un texto libre para la tabla, así que un
    tipo nuevo no necesita tocar las Lambdas ni el stack.

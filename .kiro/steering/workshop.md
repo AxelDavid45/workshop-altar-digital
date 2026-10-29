@@ -17,8 +17,12 @@ de leer.
   dependen de esos nombres y contratos.
 - Si te piden algo que no está en una tarea, sigue igual `design.md` y estas
   reglas.
-- Sigue el estilo del código que ya existe: el frontend en `web/`, y para los
-  handlers el estilo de los que ya estén en `lambda/`.
+- Sigue el estilo del código que ya existe. El frontend es React y vive en
+  `web/src/`, repartido así: los componentes en `componentes/` agrupados por
+  parte de la pantalla, el estado en `hooks/`, la capa de datos en `datos/`, el
+  catálogo de elementos y su arte en `catalogo/`, y los ayudantes sin JSX en
+  `lib/`. Un componente por archivo. Para los handlers, el estilo de los que ya
+  estén en `lambda/`.
 
 ## Lo que nunca haces
 

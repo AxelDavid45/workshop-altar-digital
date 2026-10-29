@@ -15,8 +15,9 @@ contratos. Esta arquitectura ya se desplegó y se probó contra AWS real.
   con el punto de entrada en `bin/ofrenda.ts` y la config en `cdk.json`.
 - El stack se llama `ofrenda`, en la Región del proyecto. Una sola tabla, un solo
   bucket, tres Lambdas y una REST API.
-- **CDK, no Amplify Gen 2.** Amplify Hosting publica `web/` desde GitHub y se
-  configura con `amplify.yml`, no con recursos de este stack.
+- **CDK, no Amplify Gen 2.** Amplify Hosting construye el frontend de `web/` con
+  Vite y publica `dist/`. Se configura con `amplify.yml`, no con recursos de
+  este stack.
 - Las dependencias de CDK y del SDK van en `devDependencies`, para que el build
   del frontend en Amplify (`npm ci --omit=dev`) no las descargue.
 
@@ -114,10 +115,12 @@ Cada handler devuelve `{ statusCode, headers, body }` con los headers de CORS
 
 ## El frontend en el módulo 3
 
-El altar en `web/` no sabe dónde se guardan las cosas: se lo pregunta a
-`web/almacen.js`. En el módulo 3, `almacen.js` se reescribe para hablarle a la
-API en vez de a `localStorage`. Las cuatro funciones (`listar`, `agregar`,
-`borrar`, `urlDeImagen`) mantienen su firma.
+El altar es una app de React en `web/src/`, y ningún componente sabe dónde se
+guardan las cosas: se lo preguntan al hook `web/src/hooks/useAltar.js`, que a su
+vez se lo pregunta a `web/src/datos/almacen.js`. En el módulo 3 se reescribe ese
+último archivo para hablarle a la API en vez de a `localStorage`. Las cuatro
+funciones (`listar`, `agregar`, `borrar`, `urlDeImagen`) mantienen su firma, así
+que no se toca ni un componente.
 
 - La URL de la API sale de `import.meta.env.VITE_API_URL` (nunca escrita en el
   código).
@@ -129,11 +132,3 @@ API en vez de a `localStorage`. Las cuatro funciones (`listar`, `agregar`,
 
 Esta versión vive en la rama de rescate `modulo-3`.
 
-## Pasos extra
-
-- **Familia (Cognito):** un user pool, un autorizador en las rutas de escritura
-  (`POST /elements`, `POST /uploads`) y una lista de miembros por altar. El
-  handler comprueba que quien escribe sea dueño o invitado. Lee en ese momento la
-  sección correspondiente; no está detallada aquí.
-- **Voz (Polly):** una Lambda que convierte el `texto` de los elementos `recuerdo`
-  en un MP3 con Amazon Polly y lo guarda en S3.
