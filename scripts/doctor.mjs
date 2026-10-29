@@ -59,9 +59,7 @@ function revisarNode() {
       `Node ${process.versions.node} (necesitas Node 24.11 o superior dentro de la línea 24)`,
       arreglo(
         'winget install OpenJS.NodeJS.LTS   (o bájalo de https://nodejs.org)',
-        esMac
-          ? 'brew install node   (o bájalo de https://nodejs.org)'
-          : 'Usa nvm o bájalo de https://nodejs.org'
+        'nvm install 24 && nvm alias default 24   (instala nvm desde https://github.com/nvm-sh/nvm)'
       )
     )
   }
