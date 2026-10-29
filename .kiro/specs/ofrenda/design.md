@@ -34,7 +34,7 @@ contratos. Esta arquitectura ya se desplegó y se probó contra AWS real.
   Lambda carga los `.js` como CommonJS y revienta con "Cannot use import
   statement outside a module". El `package.json` de la raíz no sirve, porque
   `Code.fromAsset` solo empaqueta la carpeta `lambda/`.
-- Runtime `nodejs22.x`, 128 MB, timeout 10 s. El SDK de AWS v3 ya viene en el
+- Runtime `nodejs24.x`, 128 MB, timeout 10 s. El SDK de AWS v3 ya viene en el
   runtime, así que los handlers lo importan sin que viaje en el paquete.
 
 ## Data Models
