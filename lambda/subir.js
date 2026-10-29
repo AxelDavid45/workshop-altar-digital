@@ -6,7 +6,7 @@
 //
 // GET /uploads/:imageKey devuelve una URL firmada para VER una imagen.
 // El bucket es privado: nadie ve tu foto sin una URL firmada, y esa URL
-// vive una hora.
+// vive hasta una hora.
 //
 // El bucket es privado. La URL firmada es la unica puerta, y solo abre
 // para la operacion que se firmo: PUT para subir, GET para ver.
@@ -15,7 +15,7 @@ import { randomUUID } from 'node:crypto'
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
-const s3 = new S3Client({})
+const s3 = new S3Client({ requestChecksumCalculation: 'WHEN_REQUIRED' })
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -23,9 +23,24 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 }
 
-// Solo imagenes, y solo de los tipos que el navegador sabe mandar.
-// La URL firmada queda atada a este Content-Type: si el navegador sube
-// otra cosa, S3 la rechaza.
+// Solo imagenes y solo de los tipos que el navegador sabe convertir.
+
+function altarValido(valor) {
+  return (
+    typeof valor === 'string' &&
+    valor.length >= 1 &&
+    valor.length <= 253 &&
+    /^[a-zA-Z0-9.-]+$/.test(valor)
+  )
+}
+
+function imageKeyValida(valor) {
+  return (
+    typeof valor === 'string' &&
+    valor.length <= 320 &&
+    /^[a-zA-Z0-9.-]+\/[0-9a-f-]{36}\.(jpeg|png|webp|gif)$/.test(valor)
+  )
+}
 const PERMITIDOS = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
 
 export async function handler(event) {
@@ -34,16 +49,16 @@ export async function handler(event) {
   // entero en event.pathParameters.proxy.
   if (event.httpMethod === 'GET') {
     const imageKey = event.pathParameters?.proxy
-    if (!imageKey) {
+    if (!imageKeyValida(imageKey)) {
       return {
         statusCode: 400,
         headers: CORS,
-        body: JSON.stringify({ error: 'Falta la llave de la imagen.' }),
+        body: JSON.stringify({ error: 'La llave de la imagen no es valida.' }),
       }
     }
 
-    // La URL firmada de lectura vive una hora. Es la unica forma de ver
-    // una imagen en un bucket privado.
+    // La URL firmada de lectura vive hasta una hora. Las credenciales
+    // temporales de la Lambda pueden hacer que expire antes.
     const url = await getSignedUrl(
       s3,
       new GetObjectCommand({
@@ -73,12 +88,12 @@ export async function handler(event) {
   }
 
   const altarId = cuerpo.altarId
-  const contentType = cuerpo.contentType || 'image/jpeg'
-  if (!altarId || typeof altarId !== 'string') {
+  const contentType = cuerpo.contentType
+  if (!altarValido(altarId)) {
     return {
       statusCode: 400,
       headers: CORS,
-      body: JSON.stringify({ error: 'Falta altarId en el cuerpo.' }),
+      body: JSON.stringify({ error: 'altarId no es valido.' }),
     }
   }
   if (!PERMITIDOS.has(contentType)) {

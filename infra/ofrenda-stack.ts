@@ -6,7 +6,7 @@
 //
 // Preguntas del diff (modulo 3):
 //   1. El bucket, quedo privado? (busca blockPublicAccess)
-//   2. Cada Lambda tiene solo los permisos que usa, o hay un Resource: '*'?
+//   2. Los permisos de datos apuntan a la tabla y al bucket concretos?
 //   3. Listar usa Query con Limit o se fue a Scan? (eso se revisa en
 //      lambda/listar.js, no aqui)
 
@@ -118,10 +118,9 @@ export class OfrendaStack extends cdk.Stack {
     // -----------------------------------------------------------------
     // Los permisos: cada Lambda toca solo lo que usa.
     //
-    // grantReadData / grantWriteData / grantPut generan las policies
-    // minimas sobre ESTE recurso. Nada de Resource: '*', nada de
-    // policies administradas como AmazonDynamoDBFullAccess: eso le
-    // daria a una Lambda que solo lista el permiso de borrar la tabla.
+    // Los grants de datos apuntan a ESTA tabla o ESTE bucket. Nada de
+    // policies FullAccess ni permisos de DynamoDB/S3 con Resource: '*'.
+    // CDK agrega aparte la policy basica para escribir logs en CloudWatch.
     //
     // grantReadWrite a `agregar` es a proposito: para ordenar el
     // elemento dentro de su nivel, el handler cuenta cuantos hay antes
@@ -135,11 +134,12 @@ export class OfrendaStack extends cdk.Stack {
     bucket.grantRead(subir)
 
     // -----------------------------------------------------------------
-    // La API: tres rutas y nada mas.
+    // La API: cuatro rutas y nada mas.
     //
     //   GET  /elements?altarId=...   lista los elementos de un altar
-    //   POST /elements               agrega un elemento
-    //   POST /uploads                devuelve una URL firmada de S3
+    //   POST /elements               agrega o quita un elemento
+    //   POST /uploads                devuelve una URL firmada de subida
+    //   GET  /uploads/{proxy+}       devuelve una URL firmada de lectura
     //
     // defaultCorsPreflightOptions deja que el navegador hable con la
     // API desde tu pagina. Sin esto, el primer fetch muere antes de
@@ -147,12 +147,32 @@ export class OfrendaStack extends cdk.Stack {
     // -----------------------------------------------------------------
     const api = new apigw.RestApi(this, 'api', {
       restApiName: 'ofrenda',
-      deployOptions: { stageName: 'v1' },
+      deployOptions: {
+        stageName: 'v1',
+        throttlingRateLimit: 20,
+        throttlingBurstLimit: 40,
+      },
       defaultCorsPreflightOptions: {
+        // Cada asistente obtiene un dominio de Amplify distinto y tambien
+        // usa localhost. La API es publica por diseño del workshop, asi
+        // que CORS permite esos navegadores; CORS no sustituye auth.
         allowOrigins: apigw.Cors.ALL_ORIGINS,
         allowMethods: ['GET', 'POST'],
         allowHeaders: ['Content-Type'],
       },
+    })
+
+    const headersDeError = {
+      'Access-Control-Allow-Origin': "'*'",
+      'Access-Control-Allow-Headers': "'Content-Type'",
+    }
+    api.addGatewayResponse('errores4xx', {
+      type: apigw.ResponseType.DEFAULT_4XX,
+      responseHeaders: headersDeError,
+    })
+    api.addGatewayResponse('errores5xx', {
+      type: apigw.ResponseType.DEFAULT_5XX,
+      responseHeaders: headersDeError,
     })
 
     const elementos = api.root.addResource('elements')

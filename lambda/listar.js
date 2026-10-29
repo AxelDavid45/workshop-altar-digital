@@ -17,13 +17,22 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 }
 
+function altarValido(valor) {
+  return (
+    typeof valor === 'string' &&
+    valor.length >= 1 &&
+    valor.length <= 253 &&
+    /^[a-zA-Z0-9.-]+$/.test(valor)
+  )
+}
+
 export async function handler(event) {
   const altarId = event.queryStringParameters?.altarId
-  if (!altarId) {
+  if (!altarValido(altarId)) {
     return {
       statusCode: 400,
       headers: CORS,
-      body: JSON.stringify({ error: 'Falta el parametro altarId.' }),
+      body: JSON.stringify({ error: 'altarId no es valido.' }),
     }
   }
 

@@ -19,6 +19,12 @@ frontend:
   phases:
     preBuild:
       commands:
+        # La imagen de Amplify puede cambiar su Node predeterminado. El
+        # starter se prueba con la linea 22 y Vite necesita 22.12 o mas.
+        - nvm install 22
+        - nvm use 22
+        - node --version
+
         # npm ci a secas, sin --omit=dev, y hay una razon concreta.
         #
         # Vite es el que construye tu altar, y vive en devDependencies, que
