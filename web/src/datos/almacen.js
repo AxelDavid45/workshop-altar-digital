@@ -40,21 +40,22 @@ export const MODO = 'nube'
 // La base de tu API. Sale del output de `cdk deploy` y va como
 // VITE_API_URL en Amplify. Vite solo expone al navegador las variables
 // que empiezan con VITE_, justo para que no se te escape un secreto.
-const API = import.meta.env.VITE_API_URL
+const API = import.meta.env.VITE_API_URL?.replace(/\/+$/, '')
 
-const LLAVE_ALTAR = 'ofrenda:altarId'
+const LLAVE_ELEMENTOS = 'ofrenda:elementos'
 const LLAVE_NOMBRE = 'ofrenda:nombre'
 
-// Tu altar tiene un ID unico. Se genera la primera vez y se guarda en
-// localStorage, asi que es el mismo en tu laptop y en tu telefono solo
-// si lo copias. Para este taller, cada persona tiene su propio altar.
+// La URL publica identifica el altar. Dos navegadores que abren la misma
+// pagina consultan la misma particion de DynamoDB.
 function altarId() {
-  let id = localStorage.getItem(LLAVE_ALTAR)
-  if (!id) {
-    id = crypto.randomUUID()
-    localStorage.setItem(LLAVE_ALTAR, id)
+  return window.location.hostname.toLowerCase()
+}
+
+function api() {
+  if (!API) {
+    throw new Error('Falta VITE_API_URL. Configúrala en Amplify y vuelve a construir.')
   }
-  return id
+  return API
 }
 
 /** El mensaje de error que mando la API, o uno de respaldo. */
@@ -72,10 +73,8 @@ async function errorDe(respuesta, respaldo) {
 // La imagen NUNCA pasa por la Lambda: el altar pide permiso, la API le da
 // una URL que vive 5 minutos, y el navegador sube ahi. Por eso puedes
 // subir una foto de 8 megas sin que la Lambda se quede sin memoria.
-async function subirImagen(archivo) {
-  const blob = await reducirABlob(archivo)
-
-  const permiso = await fetch(`${API}/uploads`, {
+async function subirBlob(blob) {
+  const permiso = await fetch(`${api()}/uploads`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -88,10 +87,6 @@ async function subirImagen(archivo) {
   }
 
   const { url, imageKey } = await permiso.json()
-
-  // El PUT va directo a S3, no a tu API. Por eso S3 tiene que aceptar el
-  // origen de tu pagina (CORS), y por eso la URL firmada lleva la
-  // autorizacion dentro.
   const subida = await fetch(url, {
     method: 'PUT',
     headers: { 'Content-Type': 'image/jpeg' },
@@ -104,17 +99,111 @@ async function subirImagen(archivo) {
   return imageKey
 }
 
+async function subirImagen(archivo) {
+  return subirBlob(await reducirABlob(archivo))
+}
+
+async function blobDeDataUrl(dataUrl) {
+  const respuesta = await fetch(dataUrl)
+  if (!respuesta.ok) throw new Error('No pude leer una imagen guardada en el navegador.')
+  return respuesta.blob()
+}
+
 // ---------------------------------------------------------------------
 // Las cuatro funciones que el resto de la app conoce
 // ---------------------------------------------------------------------
 
+function elementosLocales() {
+  try {
+    const crudo = localStorage.getItem(LLAVE_ELEMENTOS)
+    if (!crudo) return []
+    const lista = JSON.parse(crudo)
+    return Array.isArray(lista) ? lista : []
+  } catch {
+    console.warn('No pude leer los elementos que estaban en este navegador.')
+    return []
+  }
+}
+
+function firmaDe(elemento) {
+  return JSON.stringify([
+    elemento.tipo,
+    elemento.nivel,
+    elemento.texto || '',
+    elemento.link || '',
+    elemento.puestoPor || '',
+    Boolean(elemento.imagenLocal || elemento.imageKey),
+  ])
+}
+
+function contarFirmas(elementos) {
+  const cantidades = new Map()
+  for (const elemento of elementos) {
+    const firma = firmaDe(elemento)
+    cantidades.set(firma, (cantidades.get(firma) || 0) + 1)
+  }
+  return cantidades
+}
+
+async function guardarRemoto(elemento) {
+  let imageKey
+  if (elemento.imagenLocal) {
+    imageKey = await subirBlob(await blobDeDataUrl(elemento.imagenLocal))
+  }
+
+  const respuesta = await fetch(`${api()}/elements`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      altarId: altarId(),
+      tipo: elemento.tipo,
+      nivel: elemento.nivel,
+      texto: elemento.texto || '',
+      link: elemento.link || '',
+      puestoPor: elemento.puestoPor || '',
+      ...(imageKey && { imageKey }),
+    }),
+  })
+  if (!respuesta.ok) {
+    throw await errorDe(respuesta, 'No pude importar tu altar del navegador.')
+  }
+  return respuesta.json()
+}
+
+async function importarLocales(remotos) {
+  const locales = elementosLocales()
+  if (locales.length === 0) return remotos
+
+  // Cuenta coincidencias para que una recarga no duplique semillas ni
+  // elementos repetidos. Si otro navegador migro primero, solo se sube
+  // lo que falta en este.
+  const disponibles = contarFirmas(remotos)
+  const importados = []
+
+  for (const elemento of locales) {
+    const firma = firmaDe(elemento)
+    const existentes = disponibles.get(firma) || 0
+    if (existentes > 0) {
+      disponibles.set(firma, existentes - 1)
+      continue
+    }
+    importados.push(await guardarRemoto(elemento))
+  }
+
+  localStorage.removeItem(LLAVE_ELEMENTOS)
+  return [...remotos, ...importados]
+}
+
 /** Todos los elementos del altar, ordenados por cuando se pusieron. */
 export async function listar() {
-  const respuesta = await fetch(`${API}/elements?altarId=${altarId()}`)
+  const respuesta = await fetch(
+    `${api()}/elements?altarId=${encodeURIComponent(altarId())}`
+  )
   if (!respuesta.ok) {
     throw await errorDe(respuesta, 'No pude leer tu altar.')
   }
-  const { elementos } = await respuesta.json()
+  const cuerpo = await respuesta.json()
+  const elementos = await importarLocales(cuerpo.elementos || [])
   return elementos.sort((a, b) => a.creadoEn.localeCompare(b.creadoEn))
 }
 
@@ -132,7 +221,7 @@ export async function agregar(elemento) {
     imageKey = await subirImagen(imagen)
   }
 
-  const respuesta = await fetch(`${API}/elements`, {
+  const respuesta = await fetch(`${api()}/elements`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -149,7 +238,7 @@ export async function agregar(elemento) {
 
 /** Quita un elemento del altar. */
 export async function borrar(id) {
-  const respuesta = await fetch(`${API}/elements`, {
+  const respuesta = await fetch(`${api()}/elements`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -169,14 +258,14 @@ export async function borrar(id) {
  * En la nube el elemento solo guarda su `imageKey`. El bucket es privado,
  * asi que para ver la imagen el navegador le pide a la API una URL firmada
  * de lectura. El navegador nunca necesita saber el nombre del bucket: la
- * API lo sabe y firma por el. Esa URL vive una hora.
+ * API lo sabe y firma por el. Esa URL vive hasta una hora.
  *
  * Es la forma que AWS recomienda para objetos privados: el bucket queda
  * cerrado y la unica puerta es una URL firmada con fecha de caducidad.
  */
 export async function urlDeImagen(elemento) {
   if (!elemento.imageKey) return null
-  const respuesta = await fetch(`${API}/uploads/${elemento.imageKey}`)
+  const respuesta = await fetch(`${api()}/uploads/${elemento.imageKey}`)
   if (!respuesta.ok) {
     // Si una imagen no se puede leer, el altar muestra el arte por
     // default en vez de romperse entero por una foto.
