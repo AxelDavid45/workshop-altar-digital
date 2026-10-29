@@ -10,7 +10,7 @@ La guía completa está en:
 
 Necesitas:
 
-- Node.js 22.12 o superior;
+- Node.js 24.11 o superior dentro de la línea 24;
 - Git;
 - AWS CLI 2.35.0 o superior;
 - un proyecto en la nueva experiencia de AWS;
