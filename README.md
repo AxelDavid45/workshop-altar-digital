@@ -4,7 +4,7 @@ Starter del workshop de JSConf MX para construir y publicar un altar de Día de
 Muertos con JavaScript, React y AWS.
 
 La guía completa está en:
-[Ofrenda en la Nube](https://sitio-v1.do1ocq21m3igi.amplifyapp.com/inicio/)
+[Ofrenda en la Nube](https://jsconf.ademapps.dev/inicio/)
 
 ## Antes de empezar
 
