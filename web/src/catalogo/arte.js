@@ -111,6 +111,23 @@ export const ARTE = {
     </g>
   `),
 
+  // Xoloitzcuintle. El perro sin pelo que guia a las animas a cruzar el rio.
+  //
+  // Este es el tipo que se agrega en la tarea 2 del modulo 4, y es el
+  // ejemplo de que un tipo nuevo NO toca el backend: la tabla guarda el
+  // tipo como texto y no opina sobre cuales existen. Son dos archivos,
+  // los dos del frontend: el catalogo y este dibujo.
+  xolo: svg(`
+    <path d="M18 60 q 0 -8 8 -8 l 4 0 q 2 -10 12 -12 q -3 -6 1 -11 q 4 5 6 10 l 14 0 q 8 0 12 7 q 6 2 8 9 q 1 4 -3 5 l -4 1 l 0 18 q 0 3 -3 3 q -3 0 -3 -3 l 0 -10 l -24 0 l 0 10 q 0 3 -3 3 q -3 0 -3 -3 l 0 -11 q -7 -3 -9 -10 l -2 0 q -8 0 -8 -8 z" fill="${OSCURO}"/>
+    <path d="M44 27 q -4 5 -1 11 q -5 1 -8 5 q 0 -11 9 -16 z" fill="#2E2436"/>
+    <circle cx="70" cy="52" r="2.2" fill="${AMARILLO}"/>
+    <path d="M78 55 l 5 -1" stroke="${OSCURO}" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M26 86 q 24 6 48 0" stroke="${MORADO}" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <g fill="${NARANJA}">
+      <circle cx="34" cy="84" r="2.4"/><circle cx="50" cy="87" r="2.4"/><circle cx="66" cy="84" r="2.4"/>
+    </g>
+  `),
+
   // Foto. La cara de quien recordamos.
   foto: svg(`
     <rect x="14" y="10" width="72" height="80" rx="4" fill="${MORADO}"/>
