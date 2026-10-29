@@ -18,8 +18,9 @@ contratos. Esta arquitectura ya se desplegó y se probó contra AWS real.
 - **CDK, no Amplify Gen 2.** Amplify Hosting construye el frontend de `web/` con
   Vite y publica `dist/`. Se configura con `amplify.yml`, no con recursos de
   este stack.
-- Las dependencias de CDK y del SDK van en `devDependencies`, para que el build
-  del frontend en Amplify (`npm ci --omit=dev`) no las descargue.
+- Las dependencias de CDK y del SDK van en `devDependencies`, igual que Vite. El
+  build de Amplify instala con `npm ci` a secas, porque Vite vive ahí y sin él no
+  hay quien construya: `--omit=dev` deja el build en `vite: command not found`.
 
 ### Las Lambdas: JavaScript plano, sin build
 
